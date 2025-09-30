@@ -14,8 +14,7 @@ export function AuthProvider({ children }) {
 
   // Check if user is logged in on mount
   useEffect(() => {
-    // Temporarily disabled until backend is ready
-    // checkAuth()
+    checkAuth()
     setLoading(false)
   }, [])
 
