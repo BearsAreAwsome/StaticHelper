@@ -20,7 +20,7 @@ def create_app(config_name=None):
     app.url_map.strict_slashes = False
     
     # Simple CORS configuration for development
-    CORS(app, origins=["http://localhost:3000"])
+    CORS(app, origins=["http://localhost:3000", "https://static-helper.vercel.app/"])
     
     # Initialize MongoDB
     mongo_client = MongoClient(app.config['MONGO_URI'])
