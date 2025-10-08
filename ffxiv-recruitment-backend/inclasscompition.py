@@ -1,7 +1,8 @@
 from flask import Flask, render_template_string
 import pymongo
+import os
 
-MONGO_URI = "mongodb+srv://duvallbm_db_user:LJGc5EfIU5l9f10u@statichelper.c15ms4l.mongodb.net/?retryWrites=true&w=majority&appName=StaticHelper"
+MONGO_URI = os.getenv('MONGO_URI')
 
 app = Flask(__name__)
 
