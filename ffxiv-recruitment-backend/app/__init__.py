@@ -17,9 +17,10 @@ def create_app(config_name=None):
     
     app = Flask(__name__)
     app.config.from_object(config[config_name])
+    app.url_map.strict_slashes = False
     
-    # Initialize CORS
-    CORS(app, origins=app.config['CORS_ORIGINS'], supports_credentials=True)
+    # Simple CORS configuration for development
+    CORS(app, origins=["http://localhost:3000"])
     
     # Initialize MongoDB
     mongo_client = MongoClient(app.config['MONGO_URI'])
