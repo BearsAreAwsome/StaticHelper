@@ -1,0 +1,11 @@
+Make the profile button on the front end sticky. i.e. hover over and it stays.
+
+Add a dropdown selection for duty given the content type on creating/editing a listing.
+
+Make private lisitings invisible to everyone who isn't the creator.
+
+Make ilvl not a field you have to fill in.
+
+Duty Collection?
+
+Fix issue with alliance and chaotic not allowing 12 DPS

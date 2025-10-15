@@ -120,7 +120,15 @@ export default function ListingDetailPage() {
                 <div className="flex gap-2">
                   <Link
                     href={`/listings/manage/${listing.id}`}
+                    className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition"
+                    title="Manage applications"
+                  >
+                    <Users className="w-5 h-5" />
+                  </Link>
+                  <Link
+                    href={`/listings/manage/${listing.id}`}
                     className="p-2 text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition"
+                    title="Edit listing"
                   >
                     <Edit className="w-5 h-5" />
                   </Link>
@@ -128,6 +136,7 @@ export default function ListingDetailPage() {
                     onClick={handleDelete}
                     disabled={deleting}
                     className="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition disabled:opacity-50"
+                    title="Delete listing"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
@@ -270,9 +279,7 @@ export default function ListingDetailPage() {
                 Interested?
               </h3>
               {user ? (
-                <button className="w-full bg-primary-600 text-white py-3 rounded-lg hover:bg-primary-700 transition font-medium">
-                  Apply Now
-                </button>
+                <ApplyForm listingId={listing.id} onSuccess={() => fetchListing()} />
               ) : (
                 <div>
                   <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
@@ -326,5 +333,121 @@ function InfoItem({ icon, label, value }) {
         <p className="text-gray-900 dark:text-white font-medium">{value}</p>
       </div>
     </div>
+  )
+}
+
+function ApplyForm({ listingId, onSuccess }) {
+  const [formData, setFormData] = useState({
+    message: '',
+    experience: '',
+    availability: '',
+    preferred_roles: []
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { error: showError, success } = useNotification()
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+
+    try {
+      const applicationData = {
+        listing_id: listingId,
+        message: formData.message,
+        experience: formData.experience,
+        availability: formData.availability.split('\n').filter(line => line.trim()),
+        preferred_roles: formData.preferred_roles
+      }
+
+      await api.post('/applications', applicationData)
+      success('Application submitted successfully!')
+      if (onSuccess) onSuccess()
+    } catch (error) {
+      showError(error.response?.data?.message || 'Failed to submit application')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleRoleToggle = (role) => {
+    setFormData(prev => ({
+      ...prev,
+      preferred_roles: prev.preferred_roles.includes(role)
+        ? prev.preferred_roles.filter(r => r !== role)
+        : [...prev.preferred_roles, role]
+    }))
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Message to Recruiter
+        </label>
+        <textarea
+          value={formData.message}
+          onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
+          rows={3}
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+          placeholder="Tell them why you're a good fit..."
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Preferred Roles
+        </label>
+        <div className="flex gap-2">
+          {['Tank', 'Healer', 'DPS'].map(role => (
+            <button
+              key={role}
+              type="button"
+              onClick={() => handleRoleToggle(role)}
+              className={`px-3 py-1 rounded text-sm font-medium transition ${
+                formData.preferred_roles.includes(role)
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              }`}
+            >
+              {role}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Experience
+        </label>
+        <input
+          type="text"
+          value={formData.experience}
+          onChange={(e) => setFormData(prev => ({ ...prev, experience: e.target.value }))}
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+          placeholder="e.g., Cleared P9S-P11S"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Availability (one per line)
+        </label>
+        <textarea
+          value={formData.availability}
+          onChange={(e) => setFormData(prev => ({ ...prev, availability: e.target.value }))}
+          rows={2}
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+          placeholder="Tuesday 8PM EST&#10;Thursday 8PM EST"
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full bg-primary-600 text-white py-3 rounded-lg hover:bg-primary-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isSubmitting ? 'Submitting...' : 'Submit Application'}
+      </button>
+    </form>
   )
 }
