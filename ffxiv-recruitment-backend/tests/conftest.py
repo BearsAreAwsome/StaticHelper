@@ -6,6 +6,8 @@ import os
 import pytest
 import mongomock
 from app import create_app
+import bcrypt
+import pytest
 
 
 @pytest.fixture(scope="session")
@@ -49,3 +51,16 @@ def clean_db(app):
     for name in app.db.list_collection_names():
         app.db.drop_collection(name)
     yield
+
+@pytest.fixture
+def sample_user(app):
+    """Insert a mock user into the test MongoDB database."""
+    user_data = {
+        "username": "testuser",
+        "email": "test@example.com",
+        "password": bcrypt.hashpw(b"testpassword", bcrypt.gensalt()).decode("utf-8"),
+    }
+
+    # Insert user into the mock DB
+    app.db.users.insert_one(user_data)
+    return user_data
