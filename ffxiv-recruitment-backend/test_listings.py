@@ -137,19 +137,19 @@ def test_listings():
     )
     print_response(response, "Try to Edit Filled Listing")
     
-    # # Step 11: Delete listing
-    # print("\n🔵 Step 11: Delete listing")
-    # response = requests.delete(f"{BASE_URL}/listings/{listing_id}", headers=headers)
-    # print_response(response, "Delete Listing")
+    # Step 11: Delete listing
+    print("\n🔵 Step 11: Delete listing")
+    response = requests.delete(f"{BASE_URL}/listings/{listing_id}", headers=headers)
+    print_response(response, "Delete Listing")
     
-    # # Step 12: Try to get deleted listing
-    # print("\n🔵 Step 12: Try to get deleted listing (should fail)")
-    # response = requests.get(f"{BASE_URL}/listings/{listing_id}", headers=headers)
-    # print_response(response, "Get Deleted Listing")
+    # Step 12: Try to get deleted listing
+    print("\n🔵 Step 12: Try to get deleted listing (should fail)")
+    response = requests.get(f"{BASE_URL}/listings/{listing_id}", headers=headers)
+    print_response(response, "Get Deleted Listing")
     
-    # print("\n" + "="*50)
-    # print("✅ All tests completed!")
-    # print("="*50)
+    print("\n" + "="*50)
+    print("✅ All tests completed!")
+    print("="*50)
 
 if __name__ == "__main__":
     try:

@@ -33,6 +33,18 @@ module.exports = {
             800: '#86198f',
             900: '#701a75',
           },
+          test_home:{
+            50: '#fff0f0',
+            100: '#fee0e2',
+            200: '#fdbaba',
+            300: '#fc7d81',
+            400: '#f83838',
+            500: '#e90e20',
+            600: '#c70202',
+            700: '#a10303',
+            800: '#850707',
+            900: '#6e0c0c',
+          },
           // Data Center specific colors (optional)
           aether: '#3b82f6',
           crystal: '#8b5cf6',

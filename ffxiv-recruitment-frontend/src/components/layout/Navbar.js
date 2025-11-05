@@ -28,6 +28,14 @@ export default function Navbar() {
             >
               Browse Listings
             </Link>
+            {user && (
+              <Link 
+                href="/recommendations" 
+                className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
+              >
+                For You
+              </Link>
+            )}
             <Link 
               href="/search/players" 
               className="text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 transition"
