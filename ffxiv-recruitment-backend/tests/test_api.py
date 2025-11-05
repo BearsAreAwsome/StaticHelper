@@ -282,7 +282,7 @@ class TestListings:
             'title': 'State Test',
             'description': 'Test',
             'owner_id': sample_user['_id'],
-            'content_type': 'savage',
+            
             'data_center': 'Primal',
             'state': 'private',
             'application_count': 0
