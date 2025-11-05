@@ -1,125 +1,51 @@
 """
-Pytest configuration and fixtures for Flask backend testing
-Place this file in: ffxiv-recruitment-backend/tests/conftest.py
+Pytest configuration and fixtures for Flask backend testing (using mongomock)
 """
 
-import pytest
 import os
-from app import create_app  # Adjust import based on your app structure
+import pytest
+import mongomock
+from app import create_app
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def app():
-    """Create application instance for testing"""
-    # Set test configuration
-    os.environ['FLASK_ENV'] = 'testing'
-    os.environ['TESTING'] = 'True'
-    
-    # Create app with test config
-    app = create_app()  # Or however you initialize your app
-    
-    # Establish application context
-    with app.app_context():
-        # Create all database tables
-        app.get_db().create_all()
-        
-        yield app
-        
-        # Cleanup
-        app.get_db().session.remove()
-        app.get_db().drop_all()
+    """Create and configure a Flask app instance for testing."""
+    os.environ["FLASK_ENV"] = "testing"
+    os.environ["TESTING"] = "True"
+
+    # Create the Flask app
+    app = create_app()
+
+    # Use an in-memory mongomock database instead of a real MongoDB server
+    mock_client = mongomock.MongoClient()
+    mock_db = mock_client.get_database("ffxiv_recruitment_test")
+
+    # Patch the app to use the mock DB
+    app.mongo_client = mock_client
+    app.db = mock_db
+
+    yield app
+
+    # (Optional) Clear after session
+    mock_client.drop_database("ffxiv_recruitment_test")
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def client(app):
-    """Create a test client for the app"""
+    """Provide a test client for API requests."""
     return app.test_client()
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def runner(app):
-    """Create a CLI runner for testing Flask commands"""
+    """Provide a CLI runner for testing Flask commands."""
     return app.test_cli_runner()
 
 
-@pytest.fixture(scope='function')
-def db_session(app):
-    """Create a new database session for a test"""
-    with app.app_context():
-        connection = app.get_db().engine.connect()
-        transaction = connection.begin()
-        
-        # Bind session to connection
-        session = app.get_db().session
-        
-        yield session
-        
-        # Rollback transaction
-        session.close()
-        transaction.rollback()
-        connection.close()
-
-
-@pytest.fixture(scope='function')
-def auth_headers(client):
-    """
-    Create authentication headers for testing protected endpoints
-    Adjust based on your authentication method (JWT, sessions, etc.)
-    """
-    # Example for JWT authentication
-    # You'll need to adjust this based on your auth implementation
-    
-    # Login or create a test user
-    response = client.post('/api/auth/login', json={
-        'username': 'testuser',
-        'password': 'testpass'
-    })
-    
-    if response.status_code == 200:
-        token = response.json.get('access_token')
-        return {'Authorization': f'Bearer {token}'}
-    
-    return {}
-
-
-@pytest.fixture(scope='function')
-def sample_user(db_session):
-    """Create a sample user for testing"""
-    from app import User  # Adjust import based on your models
-    
-    user = User(
-        username='testuser',
-        email='test@example.com',
-        # Add other required fields
-    )
-    user.set_password('testpass')  # If you have password hashing
-    
-    db_session.add(user)
-    db_session.commit()
-    
-    return user
-
-
-@pytest.fixture(scope='function')
-def sample_static_listing(db_session, sample_user):
-    """Create a sample static listing for testing"""
-    from app import StaticListing  # Adjust import
-    
-    listing = StaticListing(
-        title='Test Static',
-        description='Looking for members',
-        user_id=sample_user.id,
-        # Add other fields specific to your model
-    )
-    
-    db_session.add(listing)
-    db_session.commit()
-    
-    return listing
-
-
 @pytest.fixture(autouse=True)
-def reset_db(db_session):
-    """Automatically reset database between tests"""
+def clean_db(app):
+    """Automatically clear MongoDB collections before each test."""
+    for name in app.db.list_collection_names():
+        app.db.drop_collection(name)
     yield
-    # Cleanup happens automatically with db_session fixture
