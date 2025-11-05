@@ -82,3 +82,30 @@ def sample_static_listing(app, sample_user):
 
     app.db.listings.insert_one(listing_data)
     return listing_data
+
+@pytest.fixture(scope="function")
+def auth_headers(client, app, sample_user):
+    """
+    Generate authentication headers for protected endpoints.
+    Works with MongoDB (mongomock) and JWT-based login.
+    """
+
+    # Ensure the test user exists in the mock DB
+    if not app.db.users.find_one({"email": sample_user["email"]}):
+        app.db.users.insert_one(sample_user)
+
+    # Attempt to log in through your API
+    response = client.post("/api/auth/login", json={
+        "email": sample_user["email"],
+        "password": "testpass",
+    })
+
+    # Use .get_json() (Flask's proper JSON response method)
+    data = response.get_json() if response.is_json else {}
+
+    # Return JWT header if successful
+    if response.status_code == 200 and "access_token" in data:
+        return {"Authorization": f"Bearer {data['access_token']}"}
+
+    # Fallback: return empty headers if login fails
+    return {}
