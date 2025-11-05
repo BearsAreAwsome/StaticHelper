@@ -109,3 +109,24 @@ def auth_headers(client, app, sample_user):
 
     # Fallback: return empty headers if login fails
     return {}
+
+@pytest.fixture(scope="function")
+def db_session(app):
+    """
+    Provide a lightweight MongoDB 'session'-like fixture for testing.
+
+    This is a compatibility fixture for tests originally written for SQLAlchemy.
+    It returns the in-memory MongoDB database object (mongomock), and
+    automatically clears all collections after the test.
+    """
+    db = app.db  # mongomock database
+
+    # Optionally clear before test
+    for name in db.list_collection_names():
+        db.drop_collection(name)
+
+    yield db  # Give test functions direct access to MongoDB
+
+    # Clean up after each test
+    for name in db.list_collection_names():
+        db.drop_collection(name)
