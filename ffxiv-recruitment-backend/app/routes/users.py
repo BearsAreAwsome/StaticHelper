@@ -152,6 +152,13 @@ def link_lodestone(current_user):
             'character_name': lodestone_data.get('character_name'),
             'server': lodestone_data.get('server'),
             'data_center': lodestone_data.get('data_center'),
+            'free_company': lodestone_data.get('free_company'),
+            'gender' : lodestone_data.get('gender'),
+            'race' : lodestone_data.get('race'),
+            'sub_race' : lodestone_data.get('sub_race'),
+            'grand_company' : lodestone_data.get('grand_company'),
+            'grand_company_rank' : lodestone_data.get('grand_company_rank'),
+            'jobs' : lodestone_data.get('jobs'),
             'updated_at': datetime.utcnow()
         }
         
@@ -200,12 +207,18 @@ def verify_lodestone(current_user):
         
         # Update user data from Lodestone
         update_data = {
+            'lodestone_id': lodestone_id,
             'character_name': lodestone_data.get('character_name'),
             'server': lodestone_data.get('server'),
             'data_center': lodestone_data.get('data_center'),
-            'grand_company': lodestone_data.get('grand_company'),
             'free_company': lodestone_data.get('free_company'),
-            'lodestone_verified_at': datetime.utcnow()
+            'gender' : lodestone_data.get('gender'),
+            'race' : lodestone_data.get('race'),
+            'sub_race' : lodestone_data.get('sub_race'),
+            'grand_company' : lodestone_data.get('grand_company'),
+            'grand_company_rank' : lodestone_data.get('grand_company_rank'),
+            'jobs' : lodestone_data.get('jobs'),
+            'updated_at': datetime.utcnow()
         }
         
         get_users_collection().update_one(
