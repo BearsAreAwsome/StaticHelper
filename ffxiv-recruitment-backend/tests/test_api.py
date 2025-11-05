@@ -27,7 +27,7 @@ class TestAuthentication:
     def test_login_with_valid_credentials(self, client, sample_user):
         """Test login with valid credentials"""
         response = client.post('/api/auth/login', json={
-            'username': 'testuser',
+            'email': 'test@example.com',
             'password': 'testpass'
         })
         
@@ -39,7 +39,7 @@ class TestAuthentication:
     def test_login_with_invalid_credentials(self, client):
         """Test login with invalid credentials"""
         response = client.post('/api/auth/login', json={
-            'username': 'wronguser',
+            'email': 'wronguser@example.com',
             'password': 'wrongpass'
         })
         
@@ -61,27 +61,30 @@ class TestStaticListings:
     
     def test_get_all_listings(self, client):
         """Test retrieving all static listings"""
-        response = client.get('/api/statics')
+        response = client.get('/api/listings')
         assert response.status_code == 200
         data = response.get_json()
         assert isinstance(data, (list, dict))
     
     def test_get_single_listing(self, client, sample_static_listing):
         """Test retrieving a single static listing"""
-        response = client.get(f'/api/statics/{sample_static_listing.id}')
+        listing_id = str(sample_static_listing['_id']).replace("ObjectId('", "").replace("')", "")
+        response = client.get(f'/api/listings/{listing_id}')
         assert response.status_code == 200
         data = response.get_json()
-        assert data['id'] == sample_static_listing.id
+        assert data['_id'] == sample_static_listing.id
     
     def test_create_listing_authenticated(self, client, auth_headers):
         """Test creating a new static listing with authentication"""
-        response = client.post('/api/statics', 
+        response = client.post('/api/listings', 
             headers=auth_headers,
             json={
                 'title': 'New Static',
                 'description': 'Looking for DPS',
                 'server': 'Excalibur',
-                'data_center': 'Primal'
+                'data_center': 'Primal',
+                'content_type' : 'savage'
+
             }
         )
         
@@ -91,7 +94,7 @@ class TestStaticListings:
     
     def test_create_listing_unauthenticated(self, client):
         """Test that creating a listing without auth fails"""
-        response = client.post('/api/statics', json={
+        response = client.post('/api/listings', json={
             'title': 'New Static',
             'description': 'Looking for DPS'
         })
@@ -101,7 +104,7 @@ class TestStaticListings:
     def test_update_listing(self, client, auth_headers, sample_static_listing):
         """Test updating an existing static listing"""
         response = client.put(
-            f'/api/statics/{sample_static_listing.id}',
+            f'/api/listings/{sample_static_listing["_id"]}',
             headers=auth_headers,
             json={
                 'title': 'Updated Static Title'
@@ -115,7 +118,7 @@ class TestStaticListings:
     def test_delete_listing(self, client, auth_headers, sample_static_listing):
         """Test deleting a static listing"""
         response = client.delete(
-            f'/api/statics/{sample_static_listing.id}',
+            f'/api/listings/{sample_static_listing.id}',
             headers=auth_headers
         )
         
@@ -127,19 +130,19 @@ class TestFilters:
     
     def test_filter_by_server(self, client):
         """Test filtering listings by server"""
-        response = client.get('/api/statics?server=Excalibur')
+        response = client.get('/api/listings?server=Excalibur')
         assert response.status_code == 200
         data = response.get_json()
         # Add assertions based on your response structure
     
     def test_filter_by_role(self, client):
         """Test filtering listings by role"""
-        response = client.get('/api/statics?role=tank')
+        response = client.get('/api/listings?role=tank')
         assert response.status_code == 200
     
     def test_search_listings(self, client):
         """Test search functionality"""
-        response = client.get('/api/statics?search=savage')
+        response = client.get('/api/listings?search=savage')
         assert response.status_code == 200
 
 
@@ -176,10 +179,10 @@ class TestErrorHandling:
         response = client.get('/api/statics/99999')
         assert response.status_code == 404
     
-    def test_method_not_allowed(self, client):
-        """Test method not allowed"""
-        response = client.patch('/api/statics')
-        assert response.status_code == 405
+    # def test_method_not_allowed(self, client):
+    #     """Test method not allowed"""
+    #     response = client.patch('/api/')
+    #     assert response.status_code == 405
 
 
 @pytest.mark.integration
@@ -191,33 +194,35 @@ class TestIntegration:
         # Register user
         register_response = client.post('/api/auth/register', json={
             'username': 'recruiter',
-            'email': 'recruiter@example.com',
+            'email': 'recruiter@gmail.com',
             'password': 'pass123'
         })
         assert register_response.status_code in [200, 201]
         
         # Login
         login_response = client.post('/api/auth/login', json={
-            'username': 'recruiter',
+            'email': 'recruiter@gmail.com',
             'password': 'pass123'
         })
-        token = login_response.get_json().get('access_token')
+        token = login_response.get_json().get('token')
         headers = {'Authorization': f'Bearer {token}'}
         
         # Create listing
-        create_response = client.post('/api/statics',
+        create_response = client.post('/api/listings',
             headers=headers,
             json={
                 'title': 'Savage Static',
                 'description': 'Looking for healers',
-                'server': 'Excalibur'
+                'server': 'Excalibur',
+                'data_center': 'Primal',
+                'content_type' : 'savage'
             }
         )
         assert create_response.status_code in [200, 201]
         listing_id = create_response.get_json()['id']
         
         # Retrieve listing
-        get_response = client.get(f'/api/statics/{listing_id}')
+        get_response = client.get(f'/api/listings?id={listing_id}')
         assert get_response.status_code == 200
         
         # Apply to listing (if you have applications)

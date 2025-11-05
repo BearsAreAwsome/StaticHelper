@@ -9,6 +9,7 @@ from app import create_app
 import bcrypt
 import pytest
 from bson import ObjectId
+from app.models.user import User
 
 
 @pytest.fixture(scope="session")
@@ -61,7 +62,7 @@ def sample_user(app):
         "_id": ObjectId(),
         "username": "testuser",
         "email": "test@example.com",
-        "password": bcrypt.hashpw(b"testpass", bcrypt.gensalt()).decode("utf-8"),
+        "password_hash": User.hash_password("testpass"),
     }
 
     app.db.users.insert_one(user_data)
@@ -104,8 +105,8 @@ def auth_headers(client, app, sample_user):
     data = response.get_json() if response.is_json else {}
 
     # Return JWT header if successful
-    if response.status_code == 200 and "access_token" in data:
-        return {"Authorization": f"Bearer {data['access_token']}"}
+    if response.status_code == 200 and "token" in data:
+        return {"Authorization": f"Bearer {data['token']}"}
 
     # Fallback: return empty headers if login fails
     return {}
