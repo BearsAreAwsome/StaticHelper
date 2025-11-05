@@ -8,6 +8,7 @@ import mongomock
 from app import create_app
 import bcrypt
 import pytest
+from bson import ObjectId
 
 
 @pytest.fixture(scope="session")
@@ -51,16 +52,33 @@ def clean_db(app):
     for name in app.db.list_collection_names():
         app.db.drop_collection(name)
     yield
+    
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def sample_user(app):
-    """Insert a mock user into the test MongoDB database."""
+    """Create a sample user document in the MongoDB mock."""
     user_data = {
+        "_id": ObjectId(),
         "username": "testuser",
         "email": "test@example.com",
-        "password": bcrypt.hashpw(b"testpassword", bcrypt.gensalt()).decode("utf-8"),
+        "password": bcrypt.hashpw(b"testpass", bcrypt.gensalt()).decode("utf-8"),
     }
 
-    # Insert user into the mock DB
     app.db.users.insert_one(user_data)
     return user_data
+
+
+@pytest.fixture(scope="function")
+def sample_static_listing(app, sample_user):
+    """Create a sample static listing document tied to a user."""
+    listing_data = {
+        "_id": ObjectId(),
+        "title": "Test Static",
+        "description": "Looking for members",
+        "user_id": sample_user["_id"],
+        "role": "DPS",
+        "world": "Midgardsormr",
+    }
+
+    app.db.listings.insert_one(listing_data)
+    return listing_data
