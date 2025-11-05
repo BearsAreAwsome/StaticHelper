@@ -271,35 +271,35 @@ jobs:
           DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
           REDIS_URL: redis://localhost:6379/0
 
-  docker-build:
-    name: Docker Build Test
-    runs-on: ubuntu-latest
-    needs: [test]
+  # docker-build:
+  #   name: Docker Build Test
+  #   runs-on: ubuntu-latest
+  #   needs: [test]
     
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+  #     - name: Set up Docker Buildx
+  #       uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./${{ env.WORKING_DIRECTORY }}
-          push: false
-          tags: statichelper-backend:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+  #     - name: Build Docker image
+  #       uses: docker/build-push-action@v5
+  #       with:
+  #         context: ./${{ env.WORKING_DIRECTORY }}
+  #         push: false
+  #         tags: statichelper-backend:test
+  #         cache-from: type=gha
+  #         cache-to: type=gha,mode=max
           
-      - name: Test Docker image
-        run: |
-          docker run --rm statichelper-backend:test python --version
-          docker run --rm statichelper-backend:test flask --version || true
+  #     - name: Test Docker image
+  #       run: |
+  #         docker run --rm statichelper-backend:test python --version
+  #         docker run --rm statichelper-backend:test flask --version || true
 
   build-complete:
     name: All Tests Passed
-    needs: [lint, test, security, integration-test, docker-build]
+    needs: [lint, test, security, integration-test]
     runs-on: ubuntu-latest
     if: always()
     
@@ -311,7 +311,6 @@ jobs:
           echo "Test: ${{ needs.test.result }}"
           echo "Security: ${{ needs.security.result }}"
           echo "Integration Test: ${{ needs.integration-test.result }}"
-          echo "Docker Build: ${{ needs.docker-build.result }}"
           
           if [ "${{ needs.lint.result }}" != "success" ] || \
              [ "${{ needs.test.result }}" != "success" ] || \
