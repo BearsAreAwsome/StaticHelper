@@ -5,7 +5,7 @@ Place this file in: ffxiv-recruitment-backend/tests/conftest.py
 
 import pytest
 import os
-from app import create_app, db  # Adjust import based on your app structure
+from app import create_app  # Adjust import based on your app structure
 
 
 @pytest.fixture(scope='session')
@@ -16,18 +16,18 @@ def app():
     os.environ['TESTING'] = 'True'
     
     # Create app with test config
-    app = create_app('testing')  # Or however you initialize your app
+    app = create_app()  # Or however you initialize your app
     
     # Establish application context
     with app.app_context():
         # Create all database tables
-        db.create_all()
+        app.get_db().create_all()
         
         yield app
         
         # Cleanup
-        db.session.remove()
-        db.drop_all()
+        app.get_db().session.remove()
+        app.get_db().drop_all()
 
 
 @pytest.fixture(scope='function')
@@ -46,11 +46,11 @@ def runner(app):
 def db_session(app):
     """Create a new database session for a test"""
     with app.app_context():
-        connection = db.engine.connect()
+        connection = app.get_db().engine.connect()
         transaction = connection.begin()
         
         # Bind session to connection
-        session = db.session
+        session = app.get_db().session
         
         yield session
         
