@@ -8,6 +8,7 @@ import api from '@/lib/api'
 import { useNotification } from '@/hooks/useNotification'
 import { useAuth } from '@/hooks/useAuth'
 import LodestoneLink from '@/components/LodestoneLink'
+import FFLogsLink from '@/components/FFLogsLink'
 
 const DATA_CENTERS = ['Aether', 'Crystal', 'Primal', 'Dynamis']
 
@@ -34,13 +35,13 @@ export default function EditProfilePage() {
   const { error: showError, success } = useNotification()
   const { user, loading } = useAuth()
 
-  const handleLodestoneUpdate = (updatedUser) => {
-    // Update form data with Lodestone data
+  const handleUpdate = (updatedUser) => {
+    // Update your user state
     setFormData(prev => ({
       ...prev,
       character_name: updatedUser.character_name || prev.character_name,
-      data_center: updatedUser.data_center || prev.data_center,
-      server: updatedUser.server || prev.server
+      server: updatedUser.server || prev.server,
+      fflogs_id: updatedUser.fflogs_id
     }))
   }
 
@@ -173,8 +174,8 @@ export default function EditProfilePage() {
         </div>
         {/* Loadstone Linking */}
         <div className="space-y-6">
-          <LodestoneLink user={user} onUpdate={handleLodestoneUpdate} />
-        </div>
+          <LodestoneLink user={user} onUpdate={handleUpdate} />
+          {/* <FFLogsLink user={user} onUpdate={handleUpdate} /> */}
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Account Information */}
@@ -396,6 +397,7 @@ export default function EditProfilePage() {
             </Link>
           </div>
         </form>
+        </div>
       </div>
     </div>
   )

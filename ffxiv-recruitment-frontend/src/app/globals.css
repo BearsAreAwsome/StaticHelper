@@ -3,16 +3,16 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
+  --foreground-rgb: 30, 58, 138;
+  --background-start-rgb: 239, 246, 255;
   --background-end-rgb: 255, 255, 255;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+    --foreground-rgb: 219, 234, 254;
+    --background-start-rgb: 30, 58, 138;
+    --background-end-rgb: 15, 23, 42;
   }
 }
 
@@ -33,22 +33,22 @@ body {
   }
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar - blue theme */
 ::-webkit-scrollbar {
   width: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: #dbeafe;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: #3b82f6;
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #2563eb;
 }
 
 /* Notification animations */
@@ -65,4 +65,27 @@ body {
 
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
+}
+
+/* Additional blue theme utilities */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-in;
+}
+
+/* Blue glow effect for interactive elements */
+.blue-glow {
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+}
+
+.blue-glow:hover {
+  box-shadow: 0 0 25px rgba(59, 130, 246, 0.5);
 }

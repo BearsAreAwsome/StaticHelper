@@ -182,6 +182,7 @@ def link_lodestone(current_user):
         return jsonify({'message': f'Failed to link Lodestone account: {str(e)}'}), 500
 
 
+
 @bp.route('/lodestone/verify', methods=['POST'])
 @token_required
 def verify_lodestone(current_user):

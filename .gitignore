@@ -39,3 +39,5 @@ next-env.d.ts
 
 #backup
 /dump
+ffxiv-recruitment-backend/bulk_insert_users.py
+ffxiv-recruitment-backend/bulk_insert_listings.py

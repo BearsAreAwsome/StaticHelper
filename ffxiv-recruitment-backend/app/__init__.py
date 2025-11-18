@@ -37,7 +37,8 @@ def create_app(config_name=None):
     print(f"✅ Connected to MongoDB: {db.name}")
     
     # Register blueprints
-    from app.routes import auth, users, listings, applications, messages, search
+    from app.routes import auth, users, listings, applications, messages, search, fflogs
+
     
     app.register_blueprint(auth.bp, url_prefix='/api/auth')
     app.register_blueprint(users.bp, url_prefix='/api/users')
@@ -45,6 +46,7 @@ def create_app(config_name=None):
     app.register_blueprint(applications.bp, url_prefix='/api/applications')
     app.register_blueprint(messages.bp, url_prefix='/api/messages')
     app.register_blueprint(search.bp, url_prefix='/api/search')
+    app.register_blueprint(fflogs.bp, url_prefix='/api/fflogs')
     
     # Health check endpoint
     @app.route('/health')
