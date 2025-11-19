@@ -245,7 +245,7 @@ function TabButton({ label, count, active, onClick, color = 'text-gray-600' }) {
 function RecommendedListingCard({ recommendation, userRoles }) {
   const listing = recommendation.listing
   const matchScore = recommendation.matchScore
-  const reasons = recommendation.reasons || []
+  const reasons =  []
 
   const getMatchBadgeColor = (score) => {
     if (score >= 80) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'

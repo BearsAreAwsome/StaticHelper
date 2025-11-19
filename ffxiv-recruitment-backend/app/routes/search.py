@@ -1,17 +1,26 @@
 from flask import Blueprint, request, jsonify
-from datetime import datetime
+from datetime import datetime, timedelta
 from bson import ObjectId
 from app import get_db
 from app.models.application import Application
 from app.models.listing import Listing
 from app.models.user import User
-from app.middleware.auth_middleware import token_required
-from bson import ObjectId
-from app import get_db
-from app.middleware.auth_middleware import optional_token
-from flask import Blueprint, request, jsonify
+from app.middleware.auth_middleware import token_required, optional_token
+import google.generativeai as genai
+import os
+import json
+import hashlib
 
 bp = Blueprint('search', __name__)
+
+# Configure Gemini (moved to function to allow better error handling)
+def configure_gemini():
+    """Configure Gemini with API key"""
+    api_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY environment variable not set")
+    genai.configure(api_key=api_key)
+    return api_key
 
 # Add OPTIONS handler for CORS preflight
 @bp.route('/players', methods=['OPTIONS'])
@@ -192,134 +201,194 @@ def search_listings(current_user=None):
 @bp.route('/recommended', methods=['GET'])
 @token_required
 def get_recommended_listings(current_user):
-    """Get personalized listing recommendations for current user"""
+    """Get personalized listing recommendations using Gemini AI"""
     try:
-        # Get user's data center and roles
-        user_data_center = current_user.get('data_center')
-        user_roles = current_user.get('roles', [])
+        # Configure Gemini API
+        try:
+            api_key = configure_gemini()
+            print(f"Gemini API configured with key: {api_key[:10]}...")
+        except ValueError as e:
+            return jsonify({'message': str(e)}), 500
+        # Get user profile data
+        user_profile = {
+            'character_name': current_user.get('character_name'),
+            'server': current_user.get('server'),
+            'data_center': current_user.get('data_center'),
+            'roles': current_user.get('roles', []),
+            'bio': current_user.get('bio'),
+            'progression': current_user.get('progression', {}),
+            'availability': current_user.get('availability', [])
+        }
         
-        # Build query for recruiting listings
-        query = {'state': 'recruiting'}
+        # Get all recruiting listings (excluding user's own)
+        query = {
+            'state': 'recruiting',
+            'owner_id': {'$ne': ObjectId(current_user['_id'])}
+        }
         
-        # Exclude user's own listings
-        query['owner_id'] = {'$ne': ObjectId(current_user['_id'])}
-        
-        # Get all recruiting listings
         listings_cursor = get_listings_collection().find(query).sort('created_at', -1)
         
-        recommendations = []
+        # Format listings for Gemini
+        listings_data = []
+        listings_map = {}  # Keep track of full listing data
         
         for listing_data in listings_cursor:
-            # Calculate match score
-            match_score = calculate_match_score(current_user, listing_data)
+            listing_id = str(listing_data['_id'])
             
-            if match_score > 0:  # Only include if there's some match
-                # Get reasons for match
-                reasons = get_match_reasons(current_user, listing_data)
-                
-                # Get owner info
-                owner = get_users_collection().find_one({'_id': listing_data['owner_id']})
-                
-                listing = {
-                    'id': str(listing_data['_id']),
-                    'title': listing_data['title'],
-                    'description': listing_data['description'],
-                    'content_type': listing_data['content_type'],
-                    'content_name': listing_data.get('content_name'),
-                    'data_center': listing_data['data_center'],
-                    'server': listing_data.get('server'),
-                    'state': listing_data['state'],
-                    'roles_needed': listing_data.get('roles_needed', {}),
-                    'schedule': listing_data.get('schedule', []),
-                    'created_at': listing_data['created_at'].isoformat() if listing_data.get('created_at') else None
+            # Get owner info
+            owner = get_users_collection().find_one({'_id': listing_data['owner_id']})
+            
+            # Create simplified listing for Gemini
+            simplified_listing = {
+                'id': listing_id,
+                'title': listing_data['title'],
+                'description': listing_data['description'],
+                'content_type': listing_data['content_type'],
+                'content_name': listing_data.get('content_name'),
+                'data_center': listing_data['data_center'],
+                'server': listing_data.get('server'),
+                'roles_needed': listing_data.get('roles_needed', {}),
+                'schedule': listing_data.get('schedule', [])
+            }
+            
+            listings_data.append(simplified_listing)
+            
+            # Store full listing data for response
+            full_listing = {
+                'id': listing_id,
+                'title': listing_data['title'],
+                'description': listing_data['description'],
+                'content_type': listing_data['content_type'],
+                'content_name': listing_data.get('content_name'),
+                'data_center': listing_data['data_center'],
+                'server': listing_data.get('server'),
+                'state': listing_data['state'],
+                'roles_needed': listing_data.get('roles_needed', {}),
+                'schedule': listing_data.get('schedule', []),
+                'created_at': listing_data['created_at'].isoformat() if listing_data.get('created_at') else None
+            }
+            
+            if owner:
+                full_listing['owner'] = {
+                    'id': str(owner['_id']),
+                    'username': owner['username'],
+                    'character_name': owner.get('character_name'),
+                    'server': owner.get('server')
                 }
-                
-                if owner:
-                    listing['owner'] = {
-                        'id': str(owner['_id']),
-                        'username': owner['username'],
-                        'character_name': owner.get('character_name')
-                    }
-                
-                recommendation = {
-                    'listing': listing,
-                    'matchScore': match_score,
-                    'reasons': reasons
+            
+            listings_map[listing_id] = full_listing
+        
+        # If no listings available, return empty
+        if not listings_data:
+            return jsonify({'recommendations': []}), 200
+        
+        # Call Gemini for recommendations
+        recommendations = get_gemini_recommendations(user_profile, listings_data)
+        
+        # Enhance recommendations with full listing data
+        enhanced_recommendations = []
+        for rec in recommendations:
+            listing_id = rec['listing_id']
+            if listing_id in listings_map:
+                enhanced_rec = {
+                    'listing': listings_map[listing_id],
+                    'matchScore': rec['match_score'],
+                    'reasons': rec['reasons']
                 }
-                
-                recommendations.append(recommendation)
+                enhanced_recommendations.append(enhanced_rec)
         
-        # Sort by match score (highest first)
-        recommendations.sort(key=lambda x: x['matchScore'], reverse=True)
-        
-        return jsonify({'recommendations': recommendations}), 200
+        return jsonify({'recommendations': enhanced_recommendations}), 200
         
     except Exception as e:
         return jsonify({'message': f'Failed to get recommendations: {str(e)}'}), 500
 
-def calculate_match_score(user, listing):
-    """Calculate match score between user and listing (0-100)"""
-    score = 0
-    
-    # Data center match (most important - up to 50 points)
-    if user.get('data_center') and user['data_center'] == listing.get('data_center'):
-        score += 50
-    elif user.get('data_center'):
-        # Different data center, no score
-        return 0
-    
-    # Server match (bonus - up to 15 points)
-    if user.get('server') and listing.get('server') and user['server'] == listing['server']:
-        score += 15
-    
-    # Role match (up to 25 points)
-    user_roles = user.get('roles', [])
-    roles_needed = listing.get('roles_needed', {})
-    
-    if user_roles and roles_needed:
-        needed_roles = [r for r, count in roles_needed.items() if count > 0]
-        matching_roles = sum(1 for role in user_roles if role.lower() in [r.lower() for r in needed_roles])
-        if matching_roles > 0:
-            score += min(matching_roles * 10, 25)
-    
-    # Has bio (engagement indicator - 5 points)
-    if user.get('bio'):
-        score += 5
-    
-    # Has progression (experience indicator - 5 points)
-    if user.get('progression') and len(user['progression']) > 0:
-        score += 5
-    
-    return min(score, 100)
+def get_gemini_recommendations(user_profile, listings):
+    """Use Gemini to generate personalized recommendations"""
+    try:
+        # Initialize Gemini model
+        model = genai.GenerativeModel('gemini-2.0-flash-lite')
+        
+        # Create prompt for Gemini
+        prompt = f"""You are an expert matchmaker for Final Fantasy XIV raid groups and static formations. 
+        
+Your task is to analyze a player's profile and recommend the most suitable raid listings for them.
 
-def get_match_reasons(user, listing):
-    """Get reasons why user matches this listing"""
-    reasons = []
-    
-    # Data center match
-    if user.get('data_center') and user['data_center'] == listing.get('data_center'):
-        reasons.append(f"You're on {listing.get('data_center')} data center")
-    
-    # Server match
-    if user.get('server') and listing.get('server') and user['server'] == listing['server']:
-        reasons.append(f"Same server: {listing.get('server')}")
-    
-    # Role match
-    user_roles = user.get('roles', [])
-    roles_needed = listing.get('roles_needed', {})
-    
-    if user_roles and roles_needed:
-        needed_roles = [r for r, count in roles_needed.items() if count > 0]
-        matching = [role for role in user_roles if role.lower() in [r.lower() for r in needed_roles]]
-        if matching:
-            reasons.append(f"You play {', '.join(matching)} (needed)")
-    
-    # Content type
-    if listing.get('content_type'):
-        reasons.append(f"Looking for {listing['content_type'].capitalize()} raiders")
-    
-    # Schedule alignment
-    if listing.get('schedule') and user.get('availability'):
-        reasons.append(f"Raid schedule may work for you")
-    
-    return reasons[:5]  # Return top 5 reasons
+PLAYER PROFILE:
+{json.dumps(user_profile, indent=2)}
+
+AVAILABLE LISTINGS:
+{json.dumps(listings, indent=2)}
+
+SCORING CRITERIA (0-100 points):
+1. Data Center Match (CRITICAL - 50 points max):
+   - Same data center: 50 points
+   - Different data center: 0 points (cannot play together)
+
+2. Server Match (15 points max):
+   - Same server: 15 points
+   - Different server but same data center: 0 points
+
+3. Role Match (25 points max):
+   - Player's roles match roles_needed in listing
+   - Each matching role: 10 points (max 25)
+
+4. Content Type & Progression (10 points max):
+   - Player's progression aligns with listing's content
+   - Consider content_type and content_name
+
+5. Schedule & Availability (5 points):
+   - Schedule times align with player availability
+
+6. Experience & Engagement (5 points):
+   - Player has detailed bio and progression history
+
+IMPORTANT RULES:
+- Only recommend listings from the same data center as the player
+- Prioritize listings where the player's roles are needed
+- Consider schedule compatibility
+- Provide 3-5 specific, personalized reasons for each recommendation
+- Return TOP 10 recommendations, sorted by match_score (highest first)
+
+OUTPUT FORMAT (JSON only, no markdown):
+{{
+  "recommendations": [
+    {{
+      "listing_id": "exact_id_from_listings",
+      "match_score": 85,
+      "reasons": [
+        "You're on the same data center (Aether)",
+        "Your Tank role is needed - they need 1 Tank",
+        "They're recruiting for Savage content which matches your progression",
+        "Same server (Gilgamesh) for easier coordination",
+        "Raid times align with your availability"
+      ]
+    }}
+  ]
+}}
+
+Respond ONLY with valid JSON. No markdown, no explanations, just the JSON object."""
+
+        # Generate recommendations
+        response = model.generate_content(prompt)
+        response_text = response.text.strip()
+        
+        # Clean up response (remove markdown if present)
+        if response_text.startswith('```json'):
+            response_text = response_text.replace('```json', '').replace('```', '').strip()
+        elif response_text.startswith('```'):
+            response_text = response_text.replace('```', '').strip()
+        
+        # Parse JSON response
+        result = json.loads(response_text)
+        
+        return result.get('recommendations', [])
+        
+    except json.JSONDecodeError as e:
+        print(f"Failed to parse Gemini response: {e}")
+        print(f"Raw response: {response_text}")
+        # Fallback to empty recommendations
+        return []
+    except Exception as e:
+        print(f"Gemini API error: {e}")
+        # Fallback to empty recommendations
+        return []
